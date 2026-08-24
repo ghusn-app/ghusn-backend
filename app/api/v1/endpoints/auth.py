@@ -39,7 +39,7 @@ def _issue_token_pair(user: User, db: Session) -> TokenPair:
     db.add(new_refresh)
     db.commit()
 
-    return TokenPair(access_token=access_token, refresh_token=refresh_token_value)
+    return TokenPair(access_token=access_token, refresh_token=refresh_token_value,refresh_token_expires_at=refresh_expires_at)
 
 
 @router.post("/signup", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
