@@ -20,11 +20,8 @@ def send_password_reset_code(to_email: str, code: str):
 
     body = f"""
     مرحباً،
-
     رمز التحقق لاسترداد كلمة السر الخاصة بحسابك على منصة غصن هو:
-
     {code}
-
     هذا الرمز صالح لمدة 10 دقائق. إذا لم تطلب هذا، تجاهل هذا البريد.
     """
     message.attach(MIMEText(body, "plain"))

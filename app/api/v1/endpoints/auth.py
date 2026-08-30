@@ -1,33 +1,32 @@
-from datetime import datetime, timezone, timedelta
+import os
+import random
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.config import settings
 from app.models.user import User, UserRole
 from app.models.farmer import Farmer
 from app.models.refresh_token import RefreshToken
-from app.schemas.user import UserSignup, UserLogin, TokenPair, RefreshRequest,GoogleAuthRequest
+from app.models.password_reset import PasswordReset
+from app.schemas.user import (
+    UserSignup, UserLogin, TokenPair, RefreshRequest, GoogleAuthRequest,
+    ForgotPasswordRequest, VerifyResetCodeRequest, ResetPasswordRequest,
+)
 from app.security import hash_password, verify_password, create_access_token, create_refresh_token
+from app.services.email_service import send_password_reset_code
 
-import os
 from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
 
-import random
-from app.models.password_reset import PasswordReset
-from app.schemas.user import ForgotPasswordRequest, VerifyResetCodeRequest, ResetPasswordRequest
-from app.services.email_service import send_password_reset_code
-
-RESET_TOKEN_EXPIRE_MINUTES = int(os.getenv("RESET_TOKEN_EXPIRE_MINUTES"))
-
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
 
 def _issue_token_pair(user: User, db: Session) -> TokenPair:
-    """دالة مساعدة: بتولّد access + refresh token مع بعض، وبتخزّن الـrefresh بقاعدة البيانات
-    (تستخدم بس وقت signup/login، مش وقت refresh)"""
     access_token = create_access_token({"user_id": user.user_id, "role": user.role.value})
 
     refresh_token_value, refresh_expires_at = create_refresh_token()
@@ -39,7 +38,11 @@ def _issue_token_pair(user: User, db: Session) -> TokenPair:
     db.add(new_refresh)
     db.commit()
 
-    return TokenPair(access_token=access_token, refresh_token=refresh_token_value,refresh_token_expires_at=refresh_expires_at)
+    return TokenPair(
+        access_token=access_token,
+        refresh_token=refresh_token_value,
+        refresh_token_expires_at=refresh_expires_at,
+    )
 
 
 @router.post("/signup", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
@@ -101,8 +104,8 @@ def logout(payload: RefreshRequest, db: Session = Depends(get_db)):
     return
 
 
-@router.post("/google", response_model=TokenPair)
-def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
+@router.post("/google/signup", response_model=TokenPair)
+def google_signup(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
     try:
         idinfo = google_id_token.verify_oauth2_token(
             payload.id_token, google_requests.Request(), GOOGLE_CLIENT_ID
@@ -111,29 +114,54 @@ def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="توكن Google غير صالح")
 
     email = idinfo["email"]
+    existing_user = db.query(User).filter(User.email == email).first()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="هذا البريد الإلكتروني مسجل مسبقاً. الرجاء تسجيل الدخول بدلاً من ذلك"
+        )
+
     first_name = idinfo.get("given_name", "")
     last_name = idinfo.get("family_name", "")
 
+    new_user = User(
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        password_hash=None,
+        role=UserRole.FARMER,
+    )
+    db.add(new_user)
+    db.flush()
+
+    farmer = Farmer(user_id=new_user.user_id, auth_provider="google")
+    db.add(farmer)
+    db.commit()
+    db.refresh(new_user)
+
+    return _issue_token_pair(new_user, db)
+
+
+@router.post("/google/login", response_model=TokenPair)
+def google_login(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
+    try:
+        idinfo = google_id_token.verify_oauth2_token(
+            payload.id_token, google_requests.Request(), GOOGLE_CLIENT_ID
+        )
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="توكن Google غير صالح")
+
+    email = idinfo["email"]
     user = db.query(User).filter(User.email == email).first()
 
     if not user:
-        user = User(
-            first_name=first_name,
-            last_name=last_name,
-            email=email,
-            password_hash=None,
-            role=UserRole.FARMER,
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="لا يوجد حساب مرتبط بهذا البريد الإلكتروني. الرجاء إنشاء حساب أولاً"
         )
-        db.add(user)
-        db.flush()
-
-        farmer = Farmer(user_id=user.user_id, auth_provider="google")
-        db.add(farmer)
-        db.commit()
-        db.refresh(user)
 
     return _issue_token_pair(user, db)
-
 
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
@@ -142,12 +170,10 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
 
     if user:
         code = f"{random.randint(0, 999999):06d}"
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
-
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES)
         new_reset = PasswordReset(code=code, user_id=user.user_id, expires_at=expires_at)
         db.add(new_reset)
         db.commit()
-
         send_password_reset_code(user.email, code)
 
     return {"message": "إذا كان البريد الإلكتروني مسجلاً، ستصلك رسالة فيها رمز التحقق"}
