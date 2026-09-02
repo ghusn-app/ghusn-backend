@@ -65,8 +65,7 @@ class VerifyResetCodeRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    email: EmailStr
-    code: str
+    token: str
     new_password: str = Field(min_length=8)
     confirm_new_password: str
 
@@ -85,3 +84,6 @@ class ResetPasswordRequest(BaseModel):
         if self.new_password != self.confirm_new_password:
             raise ValueError("كلمة السر الجديدة وتأكيدها غير متطابقين")
         return self
+
+class VerifySignupRequest(BaseModel):
+    token: str

@@ -12,6 +12,7 @@ ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS"))
+RESET_TOKEN_EXPIRE_MINUTES = int(os.getenv("RESET_TOKEN_EXPIRE_MINUTES"))
 
 def create_refresh_token() -> tuple[str, datetime]:
     token = secrets.token_urlsafe(64)
@@ -40,5 +41,37 @@ def decode_access_token(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
+    except JWTError:
+        return None
+
+
+
+def create_email_verification_token(user_id: int) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
+    data = {"user_id": user_id, "purpose": "email_verification", "exp": expire}
+    return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
+
+def decode_email_verification_token(token: str) -> int | None:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("purpose") != "email_verification":
+            return None
+        return payload.get("user_id")
+    except JWTError:
+        return None
+
+
+def create_password_reset_token(user_id: int) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
+    data = {"user_id": user_id, "purpose": "password_reset", "exp": expire}
+    return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_password_reset_token(token: str) -> int | None:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("purpose") != "password_reset":
+            return None
+        return payload.get("user_id")
     except JWTError:
         return None
