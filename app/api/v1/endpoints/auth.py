@@ -10,13 +10,13 @@ from app.config import settings
 from app.models.user import User, UserRole
 from app.models.farmer import Farmer
 from app.models.refresh_token import RefreshToken
-from app.models.password_reset import PasswordReset
+from app.security import hash_password, verify_password, create_access_token, create_refresh_token, create_email_verification_token, decode_email_verification_token,create_password_reset_token,decode_password_reset_token
+from app.services.email_service import send_password_reset_link, send_signup_verification_link
 from app.schemas.user import (
     UserSignup, UserLogin, TokenPair, RefreshRequest, GoogleAuthRequest,
     ForgotPasswordRequest, VerifyResetCodeRequest, ResetPasswordRequest,
+    VerifySignupRequest,
 )
-from app.security import hash_password, verify_password, create_access_token, create_refresh_token
-from app.services.email_service import send_password_reset_code
 
 from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
@@ -45,7 +45,7 @@ def _issue_token_pair(user: User, db: Session) -> TokenPair:
     )
 
 
-@router.post("/signup", response_model=TokenPair, status_code=status.HTTP_201_CREATED)
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
 def signup(user_data: UserSignup, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
@@ -57,6 +57,7 @@ def signup(user_data: UserSignup, db: Session = Depends(get_db)):
         email=user_data.email,
         password_hash=hash_password(user_data.password),
         role=UserRole.FARMER,
+        is_verified=False,
     )
     db.add(new_user)
     db.flush()
@@ -66,7 +67,31 @@ def signup(user_data: UserSignup, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
-    return _issue_token_pair(new_user, db)
+    verification_token = create_email_verification_token(new_user.user_id)
+    send_signup_verification_link(new_user.email, verification_token)
+
+    return {"message": "تم إنشاء الحساب. تحققي من بريدك الإلكتروني لتفعيله"}
+
+
+@router.post("/verify-signup", response_model=TokenPair)
+def verify_signup(payload: VerifySignupRequest, db: Session = Depends(get_db)):
+    user_id = decode_email_verification_token(payload.token)
+
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="رابط التحقق غير صالح أو منتهي الصلاحية")
+
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="المستخدم غير موجود")
+
+    if user.is_verified:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="الحساب مفعّل مسبقاً")
+
+    user.is_verified = True
+    db.commit()
+    db.refresh(user)
+
+    return _issue_token_pair(user, db)
 
 
 @router.post("/login", response_model=TokenPair)
@@ -75,6 +100,9 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
 
     if not user or not user.password_hash or not verify_password(credentials.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="البريد الإلكتروني أو كلمة السر غير صحيحة")
+
+    if not user.is_verified:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="الرجاء تأكيد بريدك الإلكتروني أولاً")
 
     return _issue_token_pair(user, db)
 
@@ -169,59 +197,24 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     user = db.query(User).filter(User.email == payload.email).first()
 
     if user:
-        code = f"{random.randint(0, 999999):06d}"
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES)
-        new_reset = PasswordReset(code=code, user_id=user.user_id, expires_at=expires_at)
-        db.add(new_reset)
-        db.commit()
-        send_password_reset_code(user.email, code)
+        token = create_password_reset_token(user.user_id)
+        send_password_reset_link(user.email, token)
 
-    return {"message": "إذا كان البريد الإلكتروني مسجلاً، ستصلك رسالة فيها رمز التحقق"}
-
-
-@router.post("/verify-reset-code", status_code=status.HTTP_200_OK)
-def verify_reset_code(payload: VerifyResetCodeRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == payload.email).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="رمز التحقق غير صحيح")
-
-    reset_entry = (
-        db.query(PasswordReset)
-        .filter(PasswordReset.user_id == user.user_id, PasswordReset.code == payload.code, PasswordReset.used == False)
-        .order_by(PasswordReset.created_at.desc())
-        .first()
-    )
-
-    if not reset_entry:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="رمز التحقق غير صحيح")
-
-    if reset_entry.expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="رمز التحقق منتهي الصلاحية")
-
-    return {"message": "رمز التحقق صحيح"}
+    return {"message": "إذا كان البريد الإلكتروني مسجلاً، ستصلك رسالة استرداد كلمة السر"}
 
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
 def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == payload.email).first()
+    user_id = decode_password_reset_token(payload.token)
+
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="رابط الاسترداد غير صالح أو منتهي الصلاحية")
+
+    user = db.query(User).filter(User.user_id == user_id).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="رمز التحقق غير صحيح")
-
-    reset_entry = (
-        db.query(PasswordReset)
-        .filter(PasswordReset.user_id == user.user_id, PasswordReset.code == payload.code, PasswordReset.used == False)
-        .order_by(PasswordReset.created_at.desc())
-        .first()
-    )
-
-    if not reset_entry:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="رمز التحقق غير صحيح")
-
-    if reset_entry.expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="رمز التحقق منتهي الصلاحية")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="المستخدم غير موجود")
 
     user.password_hash = hash_password(payload.new_password)
-    reset_entry.used = True
     db.commit()
 
     return {"message": "تم تغيير كلمة السر بنجاح"}

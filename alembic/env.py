@@ -18,7 +18,7 @@ from app.models.diagnosis import Diagnosis
 from app.models.diseases import Diseases
 from app.models.payments import Payment
 from app.models.refresh_token import RefreshToken
-from app.models.password_reset import PasswordReset
+
 # 3. جلب كائن إعدادات Alembic
 config = context.config
 
