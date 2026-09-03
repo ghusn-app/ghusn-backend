@@ -24,7 +24,7 @@ class User(Base):
         default=UserRole.FARMER
     )
 
-    is_verified = Column(Boolean, default=False, nullable=False)
+    is_verified = Column(Boolean, default=True, nullable=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
