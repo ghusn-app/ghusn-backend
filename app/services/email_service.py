@@ -59,8 +59,8 @@ def _send_via_brevo(to_email: str, subject: str, html_content: str):
         timeout=15
     )
 
-    print("Brevo status:", response.status_code)
-    print("Brevo response:", response.text)
+    print("Brevo status:", response.status_code, flush=True)
+    print("Brevo response:", response.text, flush=True)
 
     response.raise_for_status()
     
