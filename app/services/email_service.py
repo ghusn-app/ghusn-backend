@@ -39,11 +39,28 @@ def _send_via_brevo(to_email: str, subject: str, html_content: str):
         "api-key": settings.BREVO_API_KEY,
         "content-type": "application/json",
     }
+
     payload = {
-        "sender": {"name": settings.BREVO_SENDER_NAME, "email": settings.BREVO_SENDER_EMAIL},
-        "to": [{"email": to_email}],
+        "sender": {
+            "name": settings.BREVO_SENDER_NAME,
+            "email": settings.BREVO_SENDER_EMAIL
+        },
+        "to": [
+            {"email": to_email}
+        ],
         "subject": subject,
         "htmlContent": html_content,
     }
-    response = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
+
+    response = requests.post(
+        "https://api.brevo.com/v3/smtp/email",
+        json=payload,
+        headers=headers,
+        timeout=15
+    )
+
+    print("Brevo status:", response.status_code)
+    print("Brevo response:", response.text)
+
     response.raise_for_status()
+    
