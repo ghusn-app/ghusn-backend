@@ -57,7 +57,7 @@ def signup(user_data: UserSignup, db: Session = Depends(get_db)):
         email=user_data.email,
         password_hash=hash_password(user_data.password),
         role=UserRole.FARMER,
-        is_verified=False,
+        is_verified=True,
     )
     db.add(new_user)
     db.flush()
