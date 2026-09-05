@@ -19,15 +19,15 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
 
     # SMTP (Gmail)
-    #SMTP_SERVER: str = "smtp.gmail.com"
-    #SMTP_PORT: int = 587
-    #SMTP_EMAIL: str
-    #SMTP_PASSWORD: str
+    SMTP_SERVER: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_EMAIL: str
+    SMTP_PASSWORD: str
 
     # Brevo Email API
-    BREVO_API_KEY: str
-    BREVO_SENDER_EMAIL: str
-    BREVO_SENDER_NAME: str = "Ghusn"
+    #BREVO_API_KEY: str
+    #BREVO_SENDER_EMAIL: str
+    #BREVO_SENDER_NAME: str = "Ghusn"
 
     model_config = SettingsConfigDict(
         env_file=".env",
