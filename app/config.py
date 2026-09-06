@@ -37,3 +37,5 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+MAX_IMAGE_SIZE_MB: int = 5
