@@ -159,6 +159,7 @@ def google_signup(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
         email=email,
         password_hash=None,
         role=UserRole.FARMER,
+        is_verified=True,
     )
     db.add(new_user)
     db.flush()
