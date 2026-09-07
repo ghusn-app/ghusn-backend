@@ -8,6 +8,7 @@ class Diagnosis(Base):
 
     diagnosis_id = Column(Integer, primary_key=True, index=True)
     farmer_id = Column(Integer, ForeignKey("farmers.farmer_id", ondelete="CASCADE"), nullable=False)
+    plant_id = Column(Integer, ForeignKey("plants.plant_id", ondelete="SET NULL"), nullable=True)
     disease_id = Column(Integer, ForeignKey("diseases.disease_id"), nullable=False)
     image_url = Column(Text, nullable=False)
     confidence_score = Column(Float, nullable=False)
@@ -17,3 +18,4 @@ class Diagnosis(Base):
     farmer = relationship("Farmer", back_populates="diagnoses")
     disease = relationship("Diseases", back_populates="diagnoses")
     payment = relationship("Payment", back_populates="diagnosis", uselist=False)
+    plant = relationship("Plant", back_populates="diagnoses")

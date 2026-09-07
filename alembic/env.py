@@ -6,6 +6,7 @@ import os
 import sys
 from dotenv import load_dotenv
 
+
 sys.path.append(os.getcwd())  # عشان يلاقي مجلد app
 
 load_dotenv()
@@ -18,6 +19,7 @@ from app.models.diagnosis import Diagnosis
 from app.models.diseases import Diseases
 from app.models.payments import Payment
 from app.models.refresh_token import RefreshToken
+from app.models.plant import Plant
 
 # 3. جلب كائن إعدادات Alembic
 config = context.config

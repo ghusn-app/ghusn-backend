@@ -25,3 +25,4 @@ class Farmer(Base):
     user = relationship("User", back_populates="farmer_profile")
     diagnoses = relationship("Diagnosis", back_populates="farmer", cascade="all, delete-orphan")
     payments = relationship("Payment", back_populates="farmer", cascade="all, delete-orphan")
+    plants = relationship("Plant", back_populates="farmer", cascade="all, delete-orphan")
