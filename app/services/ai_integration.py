@@ -1,14 +1,23 @@
-import random
+import requests
+from app.config import settings
 
 
 def analyze_plant_image(image_path: str) -> dict:
     """
-    Placeholder مؤقت لحد ما يجهز موديل الذكاء الاصطناعي الحقيقي.
-    لاحقاً، تستبدلي محتوى هذه الدالة باستدعاء API/موديل زميلك،
-    بشرط ترجع نفس الشكل بالضبط: {"disease_name": str, "confidence_score": float}
+    يستدعي خدمة الذكاء الاصطناعي المستضافة (ghusn-ai) عبر HTTP،
+    ويرجع النتيجة بنفس الشكل المتوقع من باقي الكود.
     """
-    fake_diseases = ["Early Blight", "Late Blight", "Healthy", "Leaf Mold"]
+    with open(image_path.lstrip("/"), "rb") as image_file:
+        files = {"file": image_file}
+        response = requests.post(
+            f"{settings.AI_SERVICE_URL}/predict",
+            files=files,
+            timeout=30,
+        )
+    response.raise_for_status()
+    result = response.json()
+
     return {
-        "disease_name": random.choice(fake_diseases),
-        "confidence_score": round(random.uniform(0.4, 0.98), 2),
+        "disease_name": result["predicted_class"],
+        "confidence_score": result["confidence"],
     }

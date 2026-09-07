@@ -11,7 +11,8 @@ from app.schemas.diagnosis import DiagnosisOut
 from app.services.storage_service import save_diagnosis_image
 from app.services.ai_integration import analyze_plant_image
 
-CONFIDENCE_THRESHOLD = 0.70
+from app.models.plant import Plant
+from app.schemas.plant import LinkPlantRequest
 
 router = APIRouter(prefix="/diagnoses", tags=["Diagnoses"])
 MAX_IMAGE_SIZE_MB = 5
@@ -28,20 +29,18 @@ def create_diagnosis(
     if not farmer:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="هذه الميزة متاحة للفلاحين فقط")
 
-    # القيد 1: الصيغة (jpg, jpeg, png)
     if image.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="صيغة الصورة غير مدعومة. الصيغ المسموحة: JPG, JPEG, PNG")
 
-    # القيد 2: الحجم الأقصى 5 ميجابايت
     image_bytes = image.file.read()
-    if len(image_bytes) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="حجم الصورة كبير جداً. الحد الأقصى المسموح 5 ميجابايت")
+    if len(image_bytes) > MAX_IMAGE_SIZE_BYTES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"حجم الصورة كبير جداً. الحد الأقصى المسموح {MAX_IMAGE_SIZE_MB} ميجابايت")
     image.file.seek(0)
 
     image_url = save_diagnosis_image(image)
     ai_result = analyze_plant_image(image_url)
 
-    if ai_result["confidence_score"] < CONFIDENCE_THRESHOLD:
+    if not ai_result["is_confident"]:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="لم يتمكن النظام من تحديد المرض بثقة كافية. الرجاء إعادة المحاولة بصورة أوضح"
@@ -132,4 +131,41 @@ def get_diagnosis_by_id(
         image_url=diagnosis.image_url,
         diagnosed_at=diagnosis.diagnosed_at,
         treatment_recommendations=disease.treatment_recommendations,
+    )
+
+@router.patch("/{diagnosis_id}/plant", response_model=DiagnosisOut)
+def link_diagnosis_to_plant(
+    diagnosis_id: int, payload: LinkPlantRequest,
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db),
+):
+    farmer = db.query(Farmer).filter(Farmer.user_id == current_user.user_id).first()
+    if not farmer:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="هذه الميزة متاحة للفلاحين فقط")
+
+    diagnosis = db.query(Diagnosis).filter(
+        Diagnosis.diagnosis_id == diagnosis_id, Diagnosis.farmer_id == farmer.farmer_id
+    ).first()
+    if not diagnosis:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="التشخيص غير موجود")
+
+    if payload.plant_id:
+        plant = db.query(Plant).filter(
+            Plant.plant_id == payload.plant_id, Plant.farmer_id == farmer.farmer_id
+        ).first()
+        if not plant:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="النبتة غير موجودة")
+    else:
+        plant = Plant(farmer_id=farmer.farmer_id, nickname=payload.nickname)
+        db.add(plant)
+        db.flush()
+
+    diagnosis.plant_id = plant.plant_id
+    db.commit()
+    db.refresh(diagnosis)
+
+    disease = db.query(Diseases).filter(Diseases.disease_id == diagnosis.disease_id).first()
+    return DiagnosisOut(
+        diagnosis_id=diagnosis.diagnosis_id, disease_id=disease.disease_id, disease_name=disease.name,
+        confidence_score=diagnosis.confidence_score, image_url=diagnosis.image_url,
+        diagnosed_at=diagnosis.diagnosed_at, treatment_recommendations=disease.treatment_recommendations,
     )
