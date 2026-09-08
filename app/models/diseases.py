@@ -6,9 +6,12 @@ class Diseases(Base):
     __tablename__ = "diseases"
 
     disease_id = Column(Integer, primary_key=True, index=True)
+    name_en = Column(String(100), unique=True, nullable=False, index=True)
     name = Column(String(150), nullable=False, index=True)
+    description = Column(Text, nullable=True)
     symptoms = Column(Text, nullable=True)
-    treatment_recommendations = Column(Text, nullable=True)
+    treatment_plan = Column(Text, nullable=True)
+    recommendations = Column(Text, nullable=True)
     
 
     # العلاقات
