@@ -4,8 +4,8 @@ from app.config import settings
 
 def analyze_plant_image(image_path: str) -> dict:
     """
-    يستدعي خدمة الذكاء الاصطناعي المستضافة (ghusn-ai) عبر HTTP،
-    ويرجع النتيجة بنفس الشكل المتوقع من باقي الكود.
+    يستدعي خدمة الذكاء الاصطناعي (ghusn-ai) المستضافة عبر HTTP،
+    ويرجع النتيجة بالشكل الموحد المستخدم بباقي الكود.
     """
     with open(image_path.lstrip("/"), "rb") as image_file:
         files = {"file": image_file}
@@ -20,4 +20,5 @@ def analyze_plant_image(image_path: str) -> dict:
     return {
         "disease_name": result["predicted_class"],
         "confidence_score": result["confidence"],
+        "is_confident": result["is_confident"],
     }
