@@ -2,16 +2,10 @@ from pydantic import BaseModel, Field, model_validator
 from datetime import datetime
 
 
-class DiagnosisSummary(BaseModel):
-    diagnosis_id: int
-    disease_name: str
-    description: str | None
-    symptoms: str | None
-    treatment_plan: str | None
-    recommendations: str | None
-    confidence_score: float
-    image_url: str
-    diagnosed_at: datetime
+class PlantOut(BaseModel):
+    plant_id: int
+    nickname: str
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -33,8 +27,10 @@ class LinkPlantRequest(BaseModel):
 class DiagnosisSummary(BaseModel):
     diagnosis_id: int
     disease_name: str
+    description: str | None
     symptoms: str | None
-    treatment_recommendations: str | None
+    treatment_plan: str | None
+    recommendations: str | None
     confidence_score: float
     image_url: str
     diagnosed_at: datetime
