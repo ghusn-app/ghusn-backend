@@ -16,7 +16,12 @@ class Settings(BaseSettings):
 
     # Password reset / Email verification
     RESET_TOKEN_EXPIRE_MINUTES: int = 10
-    FRONTEND_URL: str = "http://localhost:5173"
+
+    #url of frontend and ai servers
+    FRONTEND_URL: str 
+    FRONTEND_URL_RAILWAY: str
+    FRONTEND_URL_RAILWAY2: str
+    AI_SERVICE_URL: str
 
     # SMTP (Gmail)
     SMTP_SERVER: str = "smtp.gmail.com"
