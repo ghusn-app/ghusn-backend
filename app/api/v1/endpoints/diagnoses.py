@@ -7,12 +7,11 @@ from app.models.user import User
 from app.models.farmer import Farmer
 from app.models.diagnosis import Diagnosis
 from app.models.diseases import Diseases
+from app.models.plant import Plant
 from app.schemas.diagnosis import DiagnosisOut
+from app.schemas.plant import LinkPlantRequest
 from app.services.storage_service import save_diagnosis_image
 from app.services.ai_integration import analyze_plant_image
-
-from app.models.plant import Plant
-from app.schemas.plant import LinkPlantRequest
 
 router = APIRouter(prefix="/diagnoses", tags=["Diagnoses"])
 MAX_IMAGE_SIZE_MB = 5
@@ -46,7 +45,7 @@ def create_diagnosis(
             detail="لم يتمكن النظام من تحديد المرض بثقة كافية. الرجاء إعادة المحاولة بصورة أوضح"
         )
 
-    disease = db.query(Diseases).filter(Diseases.name == ai_result["disease_name"]).first()
+    disease = db.query(Diseases).filter(Diseases.name_en == ai_result["disease_name"]).first()
     if not disease:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="المرض المكتشف غير موجود بقاعدة البيانات")
 
@@ -71,7 +70,9 @@ def create_diagnosis(
         symptoms=disease.symptoms,
         treatment_plan=disease.treatment_plan,
         recommendations=disease.recommendations,
-       )
+        plant_id=None,
+        plant_nickname=None,
+    )
 
 
 @router.get("/my", response_model=list[DiagnosisOut])
@@ -96,10 +97,15 @@ def get_my_diagnoses(
             diagnosis_id=d.diagnosis_id,
             disease_id=disease.disease_id,
             disease_name=disease.name,
+            description=disease.description,
             confidence_score=d.confidence_score,
             image_url=d.image_url,
             diagnosed_at=d.diagnosed_at,
-            treatment_recommendations=disease.treatment_recommendations,
+            symptoms=disease.symptoms,
+            treatment_plan=disease.treatment_plan,
+            recommendations=disease.recommendations,
+            plant_id=d.plant_id,
+            plant_nickname=d.plant.nickname if d.plant else None,
         )
         for d, disease in diagnoses
     ]
@@ -127,17 +133,20 @@ def get_diagnosis_by_id(
 
     diagnosis, disease = result
     return DiagnosisOut(
-    diagnosis_id=new_diagnosis.diagnosis_id,
-    disease_id=disease.disease_id,
-    disease_name=disease.name,
-    description=disease.description,
-    confidence_score=new_diagnosis.confidence_score,
-    image_url=new_diagnosis.image_url,
-    diagnosed_at=new_diagnosis.diagnosed_at,
-    symptoms=disease.symptoms,
-    treatment_plan=disease.treatment_plan,
-    recommendations=disease.recommendations,
-)
+        diagnosis_id=diagnosis.diagnosis_id,
+        disease_id=disease.disease_id,
+        disease_name=disease.name,
+        description=disease.description,
+        confidence_score=diagnosis.confidence_score,
+        image_url=diagnosis.image_url,
+        diagnosed_at=diagnosis.diagnosed_at,
+        symptoms=disease.symptoms,
+        treatment_plan=disease.treatment_plan,
+        recommendations=disease.recommendations,
+        plant_id=diagnosis.plant_id,
+        plant_nickname=diagnosis.plant.nickname if diagnosis.plant else None,
+    )
+
 
 @router.patch("/{diagnosis_id}/plant", response_model=DiagnosisOut)
 def link_diagnosis_to_plant(
@@ -171,7 +180,16 @@ def link_diagnosis_to_plant(
 
     disease = db.query(Diseases).filter(Diseases.disease_id == diagnosis.disease_id).first()
     return DiagnosisOut(
-        diagnosis_id=diagnosis.diagnosis_id, disease_id=disease.disease_id, disease_name=disease.name,
-        confidence_score=diagnosis.confidence_score, image_url=diagnosis.image_url,
-        diagnosed_at=diagnosis.diagnosed_at, treatment_recommendations=disease.treatment_recommendations,
+        diagnosis_id=diagnosis.diagnosis_id,
+        disease_id=disease.disease_id,
+        disease_name=disease.name,
+        description=disease.description,
+        confidence_score=diagnosis.confidence_score,
+        image_url=diagnosis.image_url,
+        diagnosed_at=diagnosis.diagnosed_at,
+        symptoms=disease.symptoms,
+        treatment_plan=disease.treatment_plan,
+        recommendations=disease.recommendations,
+        plant_id=diagnosis.plant_id,
+        plant_nickname=plant.nickname,
     )
