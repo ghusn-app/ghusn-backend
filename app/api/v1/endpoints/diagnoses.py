@@ -64,11 +64,14 @@ def create_diagnosis(
         diagnosis_id=new_diagnosis.diagnosis_id,
         disease_id=disease.disease_id,
         disease_name=disease.name,
+        description=disease.description,
         confidence_score=new_diagnosis.confidence_score,
         image_url=new_diagnosis.image_url,
         diagnosed_at=new_diagnosis.diagnosed_at,
-        treatment_recommendations=disease.treatment_recommendations,
-    )
+        symptoms=disease.symptoms,
+        treatment_plan=disease.treatment_plan,
+        recommendations=disease.recommendations,
+       )
 
 
 @router.get("/my", response_model=list[DiagnosisOut])
@@ -124,14 +127,17 @@ def get_diagnosis_by_id(
 
     diagnosis, disease = result
     return DiagnosisOut(
-        diagnosis_id=diagnosis.diagnosis_id,
-        disease_id=disease.disease_id,
-        disease_name=disease.name,
-        confidence_score=diagnosis.confidence_score,
-        image_url=diagnosis.image_url,
-        diagnosed_at=diagnosis.diagnosed_at,
-        treatment_recommendations=disease.treatment_recommendations,
-    )
+    diagnosis_id=new_diagnosis.diagnosis_id,
+    disease_id=disease.disease_id,
+    disease_name=disease.name,
+    description=disease.description,
+    confidence_score=new_diagnosis.confidence_score,
+    image_url=new_diagnosis.image_url,
+    diagnosed_at=new_diagnosis.diagnosed_at,
+    symptoms=disease.symptoms,
+    treatment_plan=disease.treatment_plan,
+    recommendations=disease.recommendations,
+)
 
 @router.patch("/{diagnosis_id}/plant", response_model=DiagnosisOut)
 def link_diagnosis_to_plant(
