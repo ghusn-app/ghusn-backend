@@ -16,8 +16,8 @@ from app.api.v1.endpoints.plants import router as plants_router
 app = FastAPI(title="Ghusn API Backend")
 origins = [
     "http://localhost:5173",
-    "https://ghusn-frontend-production.up.railway.app"
-    "https:// ghusn-frontend-production-9543.up.railway.app"
+   "https://ghusn-frontend-production.up.railway.app",
+    "https://ghusn-frontend-production-9543.up.railway.app",
 ]
 
 app.add_middleware(
