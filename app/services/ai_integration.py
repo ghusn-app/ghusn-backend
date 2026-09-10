@@ -20,5 +20,5 @@ def analyze_plant_image(image_path: str) -> dict:
     return {
         "disease_name": result["predicted_class"],
         "confidence_score": result["confidence"],
-        "is_confident": result["is_confident"],
+       # "is_confident": result["is_confident"],
     }
