@@ -44,16 +44,16 @@ def get_diagnoses_history(current_user: User = Depends(get_current_user), db: Se
 
         diagnosis_list = [
             DiagnosisSummary(
-               diagnosis_id=d.diagnosis_id,
-               disease_name=disease.name,
-               description=disease.description,
-               symptoms=disease.symptoms,
-               treatment_plan=disease.treatment_plan,
-               recommendations=disease.recommendations,
-               confidence_score=d.confidence_score,
-               image_url=d.image_url,
-               diagnosed_at=d.diagnosed_at,
-                )
+                diagnosis_id=d.diagnosis_id,
+                disease_name=disease.name,
+                description=disease.description,
+                symptoms=disease.symptoms,
+                treatment_plan=disease.treatment_plan,
+                recommendations=disease.recommendations,
+                confidence_score=d.confidence_score,
+                image_url=d.image_url,
+                diagnosed_at=d.diagnosed_at,
+            )
             for d, disease in diagnoses
         ]
         plants_result.append(PlantWithDiagnosesOut(plant_id=plant.plant_id, nickname=plant.nickname, diagnoses=diagnosis_list))
@@ -67,9 +67,15 @@ def get_diagnoses_history(current_user: User = Depends(get_current_user), db: Se
     )
     unlinked_result = [
         DiagnosisSummary(
-            diagnosis_id=d.diagnosis_id, disease_name=disease.name, symptoms=disease.symptoms,
-            treatment_recommendations=disease.treatment_recommendations, confidence_score=d.confidence_score,
-            image_url=d.image_url, diagnosed_at=d.diagnosed_at,
+            diagnosis_id=d.diagnosis_id,
+            disease_name=disease.name,
+            description=disease.description,
+            symptoms=disease.symptoms,
+            treatment_plan=disease.treatment_plan,
+            recommendations=disease.recommendations,
+            confidence_score=d.confidence_score,
+            image_url=d.image_url,
+            diagnosed_at=d.diagnosed_at,
         )
         for d, disease in unlinked
     ]

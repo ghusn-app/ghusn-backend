@@ -17,6 +17,10 @@ router = APIRouter(prefix="/diagnoses", tags=["Diagnoses"])
 MAX_IMAGE_SIZE_MB = 5
 MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024
 
+allowed_content_types = ["image/jpeg", "image/png"]
+allowed_extensions = ["jpg", "jpeg", "png"]
+
+
 
 @router.post("", response_model=DiagnosisOut, status_code=status.HTTP_201_CREATED)
 def create_diagnosis(
@@ -24,13 +28,22 @@ def create_diagnosis(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+
+       
     farmer = db.query(Farmer).filter(Farmer.user_id == current_user.user_id).first()
     if not farmer:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="هذه الميزة متاحة للفلاحين فقط")
 
-    if image.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="صيغة الصورة غير مدعومة. الصيغ المسموحة: JPG, JPEG, PNG")
+    file_extension = image.filename.rsplit(".", 1)[-1].lower()
 
+    if (
+    image.content_type not in allowed_content_types
+    or file_extension not in allowed_extensions
+    ):
+     raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="صيغة الصورة غير مدعومة. الصيغ المسموحة: JPG, JPEG, PNG"
+    )
     image_bytes = image.file.read()
     if len(image_bytes) > MAX_IMAGE_SIZE_BYTES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"حجم الصورة كبير جداً. الحد الأقصى المسموح {MAX_IMAGE_SIZE_MB} ميجابايت")
