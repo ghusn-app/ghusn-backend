@@ -13,7 +13,7 @@ _supabase_client = None
 def _get_client():
     global _supabase_client
     if _supabase_client is None:
-        _supabase_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        _supabase_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SECRET_KEY)
     return _supabase_client
 
 
