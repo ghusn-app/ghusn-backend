@@ -21,12 +21,12 @@ def analyze_plant_image(image_path: str) -> dict:
     """
     client = _get_client()
 
-    local_path = image_path.lstrip("/")
-
     result = client.predict(
-        image=handle_file(local_path),
+        image=handle_file(image_path),
         api_name="/predict_disease",
     )
+
+    
 
     disease_name = result[0]
     confidence_score = float(result[1])
