@@ -34,12 +34,7 @@ class Settings(BaseSettings):
     #BREVO_SENDER_EMAIL: str
     #BREVO_SENDER_NAME: str = "Ghusn"
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
-    )
-
+    
     MAX_IMAGE_SIZE_MB: int = 5
 
     #supabase storage
@@ -47,6 +42,13 @@ class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_SECRET_KEY: str
     SUPABASE_BUCKET: str
+
+    model_config = SettingsConfigDict(
+            env_file=".env",
+            env_file_encoding="utf-8",
+            extra="ignore"
+        )
+    
 
 
 settings = Settings()
