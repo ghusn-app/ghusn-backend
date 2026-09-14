@@ -12,6 +12,8 @@ from app.schemas.diagnosis import DiagnosisOut
 from app.schemas.plant import LinkPlantRequest
 from app.services.storage_service import save_diagnosis_image
 from app.services.ai_integration import analyze_plant_image
+import os
+import tempfile
 
 router = APIRouter(prefix="/diagnoses", tags=["Diagnoses"])
 MAX_IMAGE_SIZE_MB = 5
@@ -28,64 +30,120 @@ def create_diagnosis(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    farmer = (
+        db.query(Farmer)
+        .filter(Farmer.user_id == current_user.user_id)
+        .first()
+    )
 
-       
-    farmer = db.query(Farmer).filter(Farmer.user_id == current_user.user_id).first()
     if not farmer:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="هذه الميزة متاحة للفلاحين فقط")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="هذه الميزة متاحة للفلاحين فقط"
+        )
 
+    # 1. Validate type and extension
     file_extension = image.filename.rsplit(".", 1)[-1].lower()
 
     if (
-    image.content_type not in allowed_content_types
-    or file_extension not in allowed_extensions
+        image.content_type not in allowed_content_types
+        or file_extension not in allowed_extensions
     ):
-     raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail="صيغة الصورة غير مدعومة. الصيغ المسموحة: JPG, JPEG, PNG"
-    )
-    image_bytes = image.file.read()
-    if len(image_bytes) > MAX_IMAGE_SIZE_BYTES:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"حجم الصورة كبير جداً. الحد الأقصى المسموح {MAX_IMAGE_SIZE_MB} ميجابايت")
-    image.file.seek(0)
-
-    image_url = save_diagnosis_image(image)
-    ai_result = analyze_plant_image(image_url)
-
-    if not ai_result["is_confident"]:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="لم يتمكن النظام من تحديد المرض بثقة كافية. الرجاء إعادة المحاولة بصورة أوضح"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="صيغة الصورة غير مدعومة. الصيغ المسموحة: JPG, JPEG, PNG"
         )
 
-    disease = db.query(Diseases).filter(Diseases.name_en == ai_result["disease_name"]).first()
-    if not disease:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="المرض المكتشف غير موجود بقاعدة البيانات")
+    # 2. Read bytes
+    image_bytes = image.file.read()
 
-    new_diagnosis = Diagnosis(
-        farmer_id=farmer.farmer_id,
-        disease_id=disease.disease_id,
-        image_url=image_url,
-        confidence_score=ai_result["confidence_score"],
-    )
-    db.add(new_diagnosis)
-    db.commit()
-    db.refresh(new_diagnosis)
+    if not image_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="الصورة فارغة"
+        )
 
-    return DiagnosisOut(
-        diagnosis_id=new_diagnosis.diagnosis_id,
-        disease_id=disease.disease_id,
-        disease_name=disease.name,
-        description=disease.description,
-        confidence_score=new_diagnosis.confidence_score,
-        image_url=new_diagnosis.image_url,
-        diagnosed_at=new_diagnosis.diagnosed_at,
-        symptoms=disease.symptoms,
-        treatment_plan=disease.treatment_plan,
-        recommendations=disease.recommendations,
-        plant_id=None,
-        plant_nickname=None,
-    )
+    if len(image_bytes) > MAX_IMAGE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"حجم الصورة كبير جداً. الحد الأقصى المسموح {MAX_IMAGE_SIZE_MB} ميجابايت"
+        )
+
+    temp_path = None
+
+    try:
+        # 3. Temporary file for AI only
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=f".{file_extension}"
+        ) as temp_file:
+            temp_file.write(image_bytes)
+            temp_path = temp_file.name
+
+        # 4. AI diagnosis first
+        ai_result = analyze_plant_image(temp_path)
+
+        if not ai_result["is_confident"]:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="لم يتمكن النظام من تحديد المرض بثقة كافية. الرجاء إعادة المحاولة بصورة أوضح"
+            )
+
+        # 5. Check disease exists in DB
+        disease = (
+            db.query(Diseases)
+            .filter(
+                Diseases.name_en == ai_result["disease_name"]
+            )
+            .first()
+        )
+
+        if not disease:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="المرض المكتشف غير موجود بقاعدة البيانات"
+            )
+
+        # 6. Save image only AFTER successful diagnosis
+        image_url = save_diagnosis_image(
+            image_bytes=image_bytes,
+            original_filename=image.filename,
+            content_type=image.content_type,
+            farmer_id=farmer.farmer_id
+        )
+
+        # 7. Save diagnosis in PostgreSQL
+        new_diagnosis = Diagnosis(
+            farmer_id=farmer.farmer_id,
+            disease_id=disease.disease_id,
+            image_url=image_url,
+            confidence_score=ai_result["confidence_score"],
+            plant_id=None,
+        )
+
+        db.add(new_diagnosis)
+        db.commit()
+        db.refresh(new_diagnosis)
+
+        return DiagnosisOut(
+            diagnosis_id=new_diagnosis.diagnosis_id,
+            disease_id=disease.disease_id,
+            disease_name=disease.name,
+            description=disease.description,
+            confidence_score=new_diagnosis.confidence_score,
+            image_url=new_diagnosis.image_url,
+            diagnosed_at=new_diagnosis.diagnosed_at,
+            symptoms=disease.symptoms,
+            treatment_plan=disease.treatment_plan,
+            recommendations=disease.recommendations,
+            plant_id=None,
+            plant_nickname=None,
+        )
+
+    finally:
+        # 8. Always delete temp file
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
 
 
 @router.get("/my", response_model=list[DiagnosisOut])
