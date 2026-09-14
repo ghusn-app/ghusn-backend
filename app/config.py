@@ -40,13 +40,14 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
+    MAX_IMAGE_SIZE_MB: int = 5
+
+    #supabase storage
+
+    SUPABASE_URL: str
+    SUPABASE_SECRET_KEY: str
+    SUPABASE_BUCKET: str
+
 
 settings = Settings()
 
-MAX_IMAGE_SIZE_MB: int = 5
-
-#supabase storage
-
-SUPABASE_URL: str
-SUPABASE_SECRET_KEY: str
-SUPABASE_BUCKET: str
