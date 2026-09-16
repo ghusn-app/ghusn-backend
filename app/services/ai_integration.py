@@ -26,13 +26,7 @@ def analyze_plant_image(image_path: str) -> dict:
         api_name="/predict_disease",
     )
 
-    print("===== AI RESULT =====")
-    print("image_path:", image_path)
-    print("result:", result)
-    print("=====================")
-
-    
-
+  
     disease_name = result[0]
     confidence_score = float(result[1])
 

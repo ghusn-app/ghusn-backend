@@ -90,8 +90,7 @@ def create_diagnosis(
             )
 
         # 5. Check disease exists in DB
-        print("AI RESULT:", ai_result)
-        print("AI DISEASE repr:", repr(ai_result["disease_name"]))
+       
         disease = (
             db.query(Diseases)
             .filter(
@@ -99,11 +98,7 @@ def create_diagnosis(
             )
             .first()
         )
-        print("DATABASE DISEASES:")
-        for d in db.query(Diseases).all():
-           print(d.disease_id, repr(d.name_en))
-        print("SEARCHING FOR:", repr(ai_result["disease_name"]))
-        print("FOUND:", disease)
+       
 
         if not disease:
             raise HTTPException(

@@ -87,3 +87,7 @@ class ResetPasswordRequest(BaseModel):
 
 class VerifySignupRequest(BaseModel):
     token: str
+
+class UserUpdateRequest(BaseModel):
+    first_name: str | None = Field(default=None, min_length=1, max_length=100)
+    last_name: str | None = Field(default=None, min_length=1, max_length=100)
