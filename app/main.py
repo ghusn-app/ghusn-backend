@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.endpoints.diagnoses import router as diagnoses_router
 from app.api.v1.endpoints.users import router as users_router
 from app.api.v1.endpoints.plants import router as plants_router
+from app.api.v1.endpoints.farmers import router as farmers_router
+from app.api.v1.endpoints.admin import router as admin_router
 
 
 
@@ -31,6 +33,8 @@ app.include_router(auth_router)
 app.include_router(diagnoses_router)
 app.include_router(users_router)
 app.include_router(plants_router)
+app.include_router(farmers_router)
+app.include_router(admin_router)
 
 @app.get("/")
 def read_root():
