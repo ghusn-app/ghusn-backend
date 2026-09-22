@@ -30,7 +30,8 @@ class Consultation(Base):
     # Relationships
     farmer = relationship("Farmer",back_populates="consultations")
     expert = relationship( "Expert", back_populates="consultations")
-    diagnosis = relationship("Diagnosis", back_populates="consultations")
+    ai_diagnosis = relationship("Diagnosis",foreign_keys=[ai_diagnosis_id])
+    expert_diagnosis = relationship("Diagnosis",foreign_keys=[expert_diagnosis_id]) 
     messages = relationship("ConsultationMessage",back_populates="consultation")
     payments = relationship( "Payment", back_populates="consultation")
     notifications = relationship("Notification",back_populates="consultation" )
