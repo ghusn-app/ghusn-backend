@@ -7,28 +7,24 @@ from app.database import Base
 
 class PaymentStatus(str, enum.Enum):
     PENDING = "pending"
-    APPROVED = "approved"
-    REJECTED = "rejected"
+    PAID = "paid"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
 # payment.py — diagnosis_id يرجع FK إلزامي هون
 class Payment(Base):
     __tablename__ = "payments"
 
-    payment_id = Column(Integer, primary_key=True, index=True)
-    farmer_id = Column(Integer, ForeignKey("farmers.farmer_id", ondelete="CASCADE"), nullable=False)
-    diagnosis_id = Column(Integer, ForeignKey("diagnoses.diagnosis_id"), nullable=False, unique=True)
-    admin_id = Column(Integer, ForeignKey("admins.admin_id"), nullable=True)
+    payment_id = Column(Integer,primary_key=True,index=True)
+    consultation_id = Column(Integer,ForeignKey("consultations.consultation_id"),nullable=False)
+    farmer_id = Column(Integer,ForeignKey("farmers.farmer_id"),nullable=False)
+    amount = Column(Numeric(10, 2),nullable=False)
+    currency = Column(String(10),nullable=False,default="ILS")
+    status = Column(Enum(PaymentStatus),nullable=False,default=PaymentStatus.PENDING)
+    payment_method = Column(String,nullable=True)
+    transaction_id = Column(String,unique=True,nullable=True)
+    created_at = Column(DateTime(timezone=True),server_default=func.now())
+    paid_at = Column(DateTime(timezone=True),nullable=True)
 
-    currency = Column(String(50), nullable=False)
-    amount = Column(Numeric(10, 2), nullable=False)
-    payment_date = Column(DateTime(timezone=True), server_default=func.now())
-    provider = Column(String(50), nullable=False)
-    payment_status = Column(
-        Enum(PaymentStatus, values_callable=lambda obj: [e.value for e in obj]),
-        nullable=False,
-        default=PaymentStatus.PENDING
-    )
-    transaction_ref = Column(String(100), nullable=True)
-
-    farmer = relationship("Farmer", back_populates="payments")
-    admin = relationship("Admin", back_populates="approved_payments")
-    diagnosis = relationship("Diagnosis", back_populates="payment")
+    # Relationships
+    consultation = relationship("Consultation",back_populates="payments")
+    farmer = relationship("Farmer",back_populates="payments")

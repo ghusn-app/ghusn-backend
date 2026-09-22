@@ -8,6 +8,7 @@ from app.database import Base
 class UserRole(str, enum.Enum):
     FARMER = "farmer"
     ADMIN = "admin"
+    EXPERT="expert"
 
 class User(Base):
     __tablename__ = "users"
@@ -25,10 +26,12 @@ class User(Base):
     )
 
     is_verified = Column(Boolean, default=True, nullable=False)
-
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # العلاقات
     farmer_profile = relationship("Farmer", back_populates="user", uselist=False, cascade="all, delete-orphan")
     admin_profile = relationship("Admin", back_populates="user", uselist=False, cascade="all, delete-orphan")
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
+    expert = relationship("Expert",back_populates="user",uselist=False)
+    sent_consultation_messages = relationship("ConsultationMessage",back_populates="sender")
+    notifications = relationship("Notification",back_populates="user")
