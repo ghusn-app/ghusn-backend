@@ -26,3 +26,5 @@ class Farmer(Base):
     diagnoses = relationship("Diagnosis", back_populates="farmer", cascade="all, delete-orphan")
     payments = relationship("Payment", back_populates="farmer", cascade="all, delete-orphan")
     plants = relationship("Plant", back_populates="farmer", cascade="all, delete-orphan")
+    consultations = relationship("Consultation",back_populates="farmer")
+    payments = relationship("Payment",back_populates="farmer")
