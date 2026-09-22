@@ -23,8 +23,31 @@ def analyze_plant_image(image_path: str) -> dict:
     disease_name = result[0]
     confidence_score = float(result[1])
 
+    # صورة ضبابية
+    if confidence_score == 0.0 and "ضبابية" in disease_name:
+        return {
+            "status": "blurry",
+            "message": disease_name,
+            "disease_name": None,
+            "confidence_score": 0.0,
+            "is_confident": False,
+        }
+
+    # تشخيص منخفض الثقة
+    if "التشخيص غير مؤكد" in disease_name:
+        return {
+            "status": "low_confidence",
+            "message": disease_name,
+            "disease_name": None,
+            "confidence_score": confidence_score,
+            "is_confident": False,
+        }
+
+    # تشخيص ناجح
     return {
+        "status": "success",
+        "message": None,
         "disease_name": disease_name,
         "confidence_score": confidence_score,
-        "is_confident": confidence_score >= 0.70,
+        "is_confident": True,
     }
