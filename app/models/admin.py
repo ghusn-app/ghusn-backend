@@ -10,4 +10,3 @@ class Admin(Base):
 
     # العلاقات
     user = relationship("User", back_populates="admin_profile")
-    approved_payments = relationship("Payment", back_populates="admin")
