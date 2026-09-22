@@ -31,5 +31,4 @@ class Diagnosis(Base):
     # العلاقات
     farmer = relationship("Farmer", back_populates="diagnoses")
     disease = relationship("Diseases", back_populates="diagnoses")
-    payment = relationship("Payment", back_populates="diagnosis", uselist=False)
     plant = relationship("Plant", back_populates="diagnoses")
