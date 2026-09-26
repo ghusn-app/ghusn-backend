@@ -6,6 +6,9 @@ from app.api.v1.endpoints.users import router as users_router
 from app.api.v1.endpoints.plants import router as plants_router
 from app.api.v1.endpoints.farmers import router as farmers_router
 from app.api.v1.endpoints.admin import router as admin_router
+from app.api.v1.endpoints.expert import router as experts_router
+from app.api.v1.endpoints.consultations import router as consultations_router
+
 
 
 
@@ -35,6 +38,8 @@ app.include_router(users_router)
 app.include_router(plants_router)
 app.include_router(farmers_router)
 app.include_router(admin_router)
+app.include_router(experts_router)
+app.include_router(consultations_router)
 
 @app.get("/")
 def read_root():

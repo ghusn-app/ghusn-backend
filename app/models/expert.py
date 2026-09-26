@@ -13,7 +13,7 @@ class Expert(Base):
     bio = Column(Text, nullable=True)
     experience_years = Column( Integer, nullable=False, default=0)
     consultation_price = Column( Numeric(10, 2), nullable=False)
-    is_available = Column( Boolean, default=True, nullable=False )
+    is_available = Column( Boolean, default=True, nullable=False)
     created_at = Column( DateTime(timezone=True), server_default=func.now())
 
     # Relationships

@@ -125,14 +125,27 @@ def create_diagnosis(
         # 7. Analyze image using AI
         ai_result = analyze_plant_image(temp_path)
 
-        # -------------------------------------------------
-        # NEW LOGIC
-        # -------------------------------------------------
-        # High confidence  -> CONFIRMED
-        # Low confidence   -> UNCERTAIN
-        #
-        # We DO NOT reject low-confidence diagnoses anymore.
-        # -------------------------------------------------
+        # =================================================
+        # BLUR VALIDATION
+        # =================================================
+        # If AI detects that the image is blurry:
+        # - Return 422
+        # - Do NOT save diagnosis in PostgreSQL
+        # - Do NOT upload image to Supabase
+        # =================================================
+
+        if ai_result["status"] == "blurry":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=ai_result["message"]
+            )
+
+        # =================================================
+        # DIAGNOSIS STATUS
+        # =================================================
+        # Confidence >= 85% -> CONFIRMED
+        # Confidence < 85%  -> UNCERTAIN
+        # =================================================
 
         if ai_result["is_confident"]:
             diagnosis_status = DiagnosisStatus.CONFIRMED
@@ -156,8 +169,10 @@ def create_diagnosis(
 
         # 9. Save image to Supabase
         #
-        # Now the image is saved for BOTH:
+        # Image is saved for BOTH:
         # CONFIRMED and UNCERTAIN diagnoses.
+        #
+        # Blurry images never reach this point.
         image_url = save_diagnosis_image(
             image_bytes=image_bytes,
             original_filename=image.filename,
@@ -172,8 +187,6 @@ def create_diagnosis(
             image_url=image_url,
             confidence_score=ai_result["confidence_score"],
             plant_id=None,
-
-            # New fields
             source=DiagnosisSource.AI,
             status=diagnosis_status,
         )
