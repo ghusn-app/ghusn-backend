@@ -10,7 +10,7 @@ class PaymentStatus(str, enum.Enum):
     PAID = "paid"
     FAILED = "failed"
     CANCELLED = "cancelled"
-# payment.py — diagnosis_id يرجع FK إلزامي هون
+
 class Payment(Base):
     __tablename__ = "payments"
 

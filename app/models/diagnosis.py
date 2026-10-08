@@ -10,7 +10,7 @@ class DiagnosisSource(str, enum.Enum):
 
 
 class DiagnosisStatus(str, enum.Enum):
-    PENDING = "pending"
+    
     CONFIRMED = "confirmed"
     UNCERTAIN = "uncertain"
 
