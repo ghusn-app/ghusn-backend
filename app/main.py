@@ -9,6 +9,8 @@ from app.api.v1.endpoints.admin import router as admin_router
 from app.api.v1.endpoints.expert import router as experts_router
 from app.api.v1.endpoints.consultations import router as consultations_router
 from app.api.v1.endpoints.payments import router as payments_router
+from app.api.v1.endpoints.consultation_messages import router as consultation_messages_router
+
 
 
 
@@ -43,6 +45,8 @@ app.include_router(admin_router)
 app.include_router(experts_router)
 app.include_router(consultations_router)
 app.include_router(payments_router)
+app.include_router(consultation_messages_router)
+
 
 
 @app.get("/")
