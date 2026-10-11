@@ -1,6 +1,7 @@
-from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from decimal import Decimal
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 # ==========================================
@@ -16,11 +17,26 @@ class ExpertBase(BaseModel):
 
 # ==========================================
 # CREATE EXPERT
-# Used by Admin later
 # ==========================================
 
 class ExpertCreate(ExpertBase):
     user_id: int
+
+
+# ==========================================
+# ADMIN CREATE EXPERT ACCOUNT
+# ==========================================
+
+class AdminExpertCreate(BaseModel):
+    first_name: str
+    last_name: str
+    email: EmailStr
+    password: str = Field(min_length=8)
+
+    specialization: str
+    bio: str | None = None
+    experience_years: int = Field(ge=0)
+    consultation_price: Decimal = Field(gt=0)
 
 
 # ==========================================
@@ -33,6 +49,14 @@ class ExpertUpdate(BaseModel):
     experience_years: int | None = None
     consultation_price: Decimal | None = None
     is_available: bool | None = None
+
+
+# ==========================================
+# UPDATE AVAILABILITY
+# ==========================================
+
+class ExpertAvailabilityUpdate(BaseModel):
+    is_available: bool
 
 
 # ==========================================
@@ -49,8 +73,5 @@ class ExpertOut(BaseModel):
     consultation_price: Decimal
     is_available: bool
     created_at: datetime
-
-class ExpertAvailabilityUpdate(BaseModel):
-    is_available: bool
 
     model_config = ConfigDict(from_attributes=True)

@@ -4,7 +4,7 @@ from sqlalchemy import func
 
 from app.database import get_db
 from app.api.deps import get_current_admin
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.farmer import Farmer
 from app.models.diagnosis import Diagnosis
 from app.models.diseases import Diseases
@@ -13,6 +13,13 @@ from app.schemas.admin import (
     DiseaseCreate, DiseaseUpdate, AdminDiagnosisItem, StatisticsOut,
 )
 from app.schemas.disease import DiseaseOut
+
+from app.models.expert import Expert
+from app.models.user import User, UserRole
+
+from app.schemas.expert import AdminExpertCreate, ExpertOut
+
+from app.security import hash_password
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -166,3 +173,69 @@ def get_statistics(
         total_farmers=total_farmers,
         most_common_diseases=[{"disease_name": name, "count": count} for name, count in most_common],
     )
+
+# =========================================================
+# CREATE EXPERT
+# =========================================================
+
+@router.post(
+    "/experts",
+    response_model=ExpertOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_expert(
+    payload: AdminExpertCreate,
+    admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+
+    # 1. Check if email already exists
+    existing_user = (
+        db.query(User)
+        .filter(User.email == payload.email)
+        .first()
+    )
+
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="البريد الإلكتروني مستخدم مسبقاً"
+        )
+
+    # 2. Create User account
+    new_user = User(
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+        email=payload.email,
+        password_hash=hash_password(payload.password),
+
+        role=UserRole.EXPERT,
+
+        # Expert is created by platform admin,
+        # so account is already verified.
+        is_verified=True,
+    )
+
+    db.add(new_user)
+
+    # We need user_id before creating Expert
+    db.flush()
+
+    # 3. Create Expert profile
+    new_expert = Expert(
+        user_id=new_user.user_id,
+        specialization=payload.specialization,
+        bio=payload.bio,
+        experience_years=payload.experience_years,
+        consultation_price=payload.consultation_price,
+        is_available=True,
+    )
+
+    db.add(new_expert)
+
+    # 4. Save both
+    db.commit()
+
+    db.refresh(new_expert)
+
+    return new_expert
